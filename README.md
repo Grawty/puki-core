@@ -84,6 +84,10 @@ Events: `ready`, `interactionCreate`, `messageCreate`, `guildCreate`, `threadCre
 
 ```
 src/
+  index.js                         entry point: starts the client, shuts down cleanly
+  client.js                        the client: intents, status, collections, startup order
+  config.js                        everything read from .env
+  database.js                      Sequelize connection, sync and migrations
   commands/
     slash/<Category>/<name>.js     /commands
     user/<Category>/<name>.js      right-click a user
@@ -94,12 +98,15 @@ src/
   handlers/                        the loaders and the deploy step
   migrations/                      numbered schema changes
   models/                          Sequelize models (User, Guild, Reminder)
-  utils/                           gate, cooldowns, replies, permissions
+  utils/                           gate, cooldowns, replies, permissions, duration, files, logger
   economy.js                       balance and daily reward
   guildSettings.js                 per-server prefix
   scheduler.js                     reminders that are due
   backup.js                        JSON backups of every table
   shard.js                         optional ShardingManager entry
+scripts/                           test runner, manual backup
+tests/                             unit tests, command flows, database tests
+Dockerfile, docker-compose.yml     the bot and PostgreSQL in containers
 ```
 
 ## Adding things
