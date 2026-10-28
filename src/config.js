@@ -7,6 +7,8 @@ module.exports = {
   clientId: process.env.CLIENT_ID,
   devGuildId: process.env.GUILD_ID || null,
   prefix: process.env.PREFIX || "!",
+  // shown under the bot's name: "Watching <statusText>"
+  statusText: process.env.STATUS_TEXT || "/help",
   owners: new Set(list(process.env.OWNER_ID)),
   db: {
     host: process.env.DB_HOST || "localhost",

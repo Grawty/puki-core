@@ -1,4 +1,4 @@
-const { Client, Collection, GatewayIntentBits, Options } = require("discord.js");
+const { ActivityType, Client, Collection, GatewayIntentBits, Options } = require("discord.js");
 const loadCommands = require("./handlers/commands");
 const loadEvents = require("./handlers/events");
 const loadComponents = require("./handlers/components");
@@ -28,6 +28,10 @@ class BotClient extends Client {
         GatewayIntentBits.GuildMessages,
         GatewayIntentBits.MessageContent, // privileged: only needed for text commands
       ],
+      presence: {
+        status: "online",
+        activities: [{ name: config.statusText, type: ActivityType.Watching }],
+      },
       makeCache: Options.cacheWithLimits({ ...Options.DefaultMakeCacheSettings, MessageManager: 50 }),
     });
   }

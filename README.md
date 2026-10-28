@@ -66,7 +66,7 @@ Every command here exists to show one thing. Delete `src/commands/slash/Examples
 | `/thread` | starting a thread, checking the bot's permission first |
 | `/daily`, `/balance`, `/top` | PostgreSQL, a locked transaction, sorted queries |
 | `/kick`, `/timeout` | moderation with every safety check |
-| `/status` | an owner-only command |
+| `/status` | an owner-only command; the bot status itself is `presence` in `src/client.js` |
 | Show avatar (user menu), Message info (message menu) | context menu commands |
 | `!ping`, `!say` | text commands with aliases and arguments |
 
