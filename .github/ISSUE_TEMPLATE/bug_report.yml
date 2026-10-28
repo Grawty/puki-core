@@ -1,0 +1,32 @@
+name: Bug report
+description: Something does not work as the README says
+labels: [bug]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: And what you expected instead.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: The command you ran, the options you gave, anything you changed in the code.
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Error output
+      description: Paste the log lines. Remove tokens and ids you do not want to share.
+      render: shell
+  - type: input
+    id: versions
+    attributes:
+      label: Versions
+      description: Output of `node -v` and the discord.js version from package.json
+      placeholder: Node 22.1.0, discord.js 14.27.0
+    validations:
+      required: true
