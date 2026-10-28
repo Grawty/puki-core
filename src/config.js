@@ -1,3 +1,5 @@
+const path = require("path");
+
 require("dotenv").config();
 
 const list = (value) => (value || "").split(",").map((item) => item.trim()).filter(Boolean);
@@ -9,6 +11,11 @@ module.exports = {
   prefix: process.env.PREFIX || "!",
   // shown under the bot's name: "Watching <statusText>"
   statusText: process.env.STATUS_TEXT || "/help",
+  backup: {
+    dir: process.env.BACKUP_DIR || path.join(__dirname, "..", "backups"),
+    keep: Number(process.env.BACKUP_KEEP) || 14,
+    everyHours: process.env.BACKUP_EVERY_HOURS === undefined ? 24 : Number(process.env.BACKUP_EVERY_HOURS) || 0,
+  },
   owners: new Set(list(process.env.OWNER_ID)),
   db: {
     host: process.env.DB_HOST || "localhost",

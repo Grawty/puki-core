@@ -12,6 +12,10 @@ const { claimDaily, DAILY_COINS } = require("../src/economy");
 const { runMigrations } = require("../src/migrations");
 const guildSettings = require("../src/guildSettings");
 const scheduler = require("../src/scheduler");
+const backup = require("../src/backup");
+const fs = require("fs");
+const os = require("os");
+const path = require("path");
 
 test.before(async () => {
   if (skip) return;
@@ -82,4 +86,16 @@ test("a due reminder is claimed exactly once, a future one stays", { skip }, asy
   const mine = claims.flat().filter((row) => row.userId === "db_user");
   assert.deepStrictEqual(mine.map((row) => row.text), ["due"]);
   assert.strictEqual(await Reminder.count({ where: { userId: "db_user" } }), 1);
+});
+
+test("a backup of the real tables contains the rows that were saved", { skip }, async () => {
+  await claimDaily("db_b").catch(() => {});
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "backup-db-"));
+  try {
+    const { target } = await backup.runBackup({ dir, keep: 3 });
+    const users = fs.readFileSync(path.join(target, "users.jsonl"), "utf8");
+    assert.ok(users.split("\n").some((line) => line && JSON.parse(line).id === "db_b"));
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
 });

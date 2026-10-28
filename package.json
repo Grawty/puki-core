@@ -5,6 +5,7 @@
   "main": "src/index.js",
   "scripts": {
     "start": "node .",
+    "backup": "node scripts/backup.js",
     "start:sharded": "node src/shard.js",
     "test": "node scripts/test.js",
     "lint": "eslint src tests scripts"

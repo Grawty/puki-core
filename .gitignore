@@ -3,5 +3,7 @@ node_modules
 .env
 *.log
 
+backups/
+
 # remembers which slash commands were last sent to Discord
 .deploy-cache.json

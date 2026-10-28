@@ -8,6 +8,8 @@ services:
     environment:
       DB_HOST: db
       DB_PORT: 5432
+    volumes:
+      - backups:/app/backups
     depends_on:
       db:
         condition: service_healthy
@@ -29,3 +31,4 @@ services:
 
 volumes:
   pgdata:
+  backups:
