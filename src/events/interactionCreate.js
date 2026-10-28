@@ -20,6 +20,25 @@ async function runCommand(client, interaction) {
   await command.run(client, interaction);
 }
 
+/** A component may export `options` ({ ownerOnly, guildOnly, cooldown }), checked like a command's. */
+async function gateComponent(interaction, name, options) {
+  const problem = gate.check({ userId: interaction.user.id, guild: interaction.guild }, `component:${name}`, options);
+  if (problem) await replies.fail(interaction, problem);
+  return !problem;
+}
+
+async function runAutocomplete(client, interaction) {
+  const handler = client.components.autocomplete.get(interaction.commandName);
+  if (!handler) return;
+
+  // suggestions for an owner-only command would leak what it does; no cooldown, typing fires this constantly
+  const options = { ...client.interactions.get(interaction.commandName)?.options, cooldown: 0 };
+  const problem = gate.check({ userId: interaction.user.id, guild: interaction.guild }, interaction.commandName, options);
+  if (problem) return interaction.respond([]);
+
+  await handler.run(client, interaction);
+}
+
 async function runComponent(client, interaction) {
   let collection = null;
   if (interaction.isButton()) collection = client.components.buttons;
@@ -28,7 +47,9 @@ async function runComponent(client, interaction) {
   if (!collection) return;
 
   const component = findComponent(collection, interaction.customId);
-  if (component) await component.run(client, interaction);
+  if (!component) return;
+  if (!(await gateComponent(interaction, component.customId, component.options))) return;
+  await component.run(client, interaction);
 }
 
 module.exports = {
@@ -36,7 +57,7 @@ module.exports = {
   run: async (client, interaction) => {
     try {
       if (interaction.isAutocomplete()) {
-        await client.components.autocomplete.get(interaction.commandName)?.run(client, interaction);
+        await runAutocomplete(client, interaction);
       } else if (interaction.isCommand()) {
         await runCommand(client, interaction);
       } else {

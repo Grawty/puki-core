@@ -1,11 +1,12 @@
 const path = require("path");
-const { jsFiles } = require("../utils/files");
+const { jsFiles, safeRequire } = require("../utils/files");
 const { log } = require("../utils/logger");
 
 /** src/events/*.js, each exporting { event, once?, run(client, ...args) } */
 module.exports = (client) => {
   for (const file of jsFiles(path.join(__dirname, "..", "events"))) {
-    const handler = require(file);
+    const handler = safeRequire(file);
+    if (!handler) continue;
     if (!handler.event || typeof handler.run !== "function") {
       log(`Skipped event ${path.basename(file)}: it needs event and run().`, "warn");
       continue;

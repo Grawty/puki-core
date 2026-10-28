@@ -1,5 +1,6 @@
 const fs = require("fs");
 const path = require("path");
+const { log } = require("./logger");
 
 /** Every .js file under a folder, depth first. A missing folder is an empty list. */
 function jsFiles(dir) {
@@ -11,4 +12,17 @@ function jsFiles(dir) {
   });
 }
 
-module.exports = { jsFiles };
+/**
+ * require() that survives a broken file: a syntax error or a failing import in one command
+ * is logged and skipped instead of stopping the whole bot from starting.
+ */
+function safeRequire(file) {
+  try {
+    return require(file);
+  } catch (error) {
+    log(`Could not load ${path.basename(file)}: ${error.message}`, "err");
+    return null;
+  }
+}
+
+module.exports = { jsFiles, safeRequire };

@@ -8,7 +8,10 @@ pg.types.setTypeParser(20, (value) => parseInt(value, 10));
 
 const { host, port, name, user, password } = config.db;
 
-const sequelize = new Sequelize(name, user, password, {
+// `node --test` never gets near the real database: tests use TEST_DB_NAME, or no database at all
+const database = process.env.NODE_TEST_CONTEXT ? process.env.TEST_DB_NAME : name;
+
+const sequelize = new Sequelize(database, user, password, {
   host,
   port,
   dialect: "postgres",

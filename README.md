@@ -23,7 +23,7 @@ native polls and user-installable commands.
 - A row-locked transaction (`/daily`) so parallel clicks cannot double-claim.
 - Numbered, idempotent migrations on top of `sequelize.sync()`.
 - Graceful shutdown, errors that always answer the user, optional sharding.
-- Dockerfile and docker-compose with PostgreSQL, tests that need no database, lint, GitHub Actions.
+- Dockerfile and docker-compose with PostgreSQL, tests that run real commands and events against fake Discord objects, database tests for the transactions, lint, `npm audit` and GitHub Actions with PostgreSQL.
 
 ## Setup
 
@@ -107,7 +107,7 @@ module.exports = {
 };
 ```
 
-A component: export `{ customId, run }` from the matching folder under `src/components/`. An id like
+A component: export `{ customId, run, options? }` from the matching folder under `src/components/`. `options` takes the same `ownerOnly`, `guildOnly` and `cooldown` as a command. An id like
 `demo:user` is handled by the component called `demo`, so you can carry data after the colon.
 Autocomplete exports `{ commandName, run }` instead.
 
@@ -125,7 +125,8 @@ Anything that reads a balance, checks it and writes it back belongs in a transac
 | --- | --- |
 | `npm start` | run the bot |
 | `npm run start:sharded` | run it under a ShardingManager (needed around 2,500 servers) |
-| `npm test` | unit tests, no database needed; they also build every example modal and card to validate it |
+| `npm test` | unit tests and command flows against fake Discord objects; no database needed |
+| `TEST_DB_NAME=puki_core_test npm test` | also runs the database tests (locked transactions, rollback, migrations); the database must exist and may be wiped |
 | `npm run lint` | eslint |
 
 ## License

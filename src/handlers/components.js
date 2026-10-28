@@ -1,5 +1,5 @@
 const path = require("path");
-const { jsFiles } = require("../utils/files");
+const { jsFiles, safeRequire } = require("../utils/files");
 const { log } = require("../utils/logger");
 
 const ROOT = path.join(__dirname, "..", "components");
@@ -13,7 +13,8 @@ module.exports = (client) => {
   for (const type of Object.keys(client.components)) {
     const key = type === "autocomplete" ? "commandName" : "customId";
     for (const file of jsFiles(path.join(ROOT, type))) {
-      const component = require(file);
+      const component = safeRequire(file);
+      if (!component) continue;
       if (!component[key] || typeof component.run !== "function") {
         log(`Skipped ${type}/${path.basename(file)}: it needs ${key} and run().`, "warn");
         continue;
