@@ -5,6 +5,7 @@ const loadComponents = require("./handlers/components");
 const deploy = require("./handlers/deploy");
 const config = require("./config");
 const { connectDatabase } = require("./database");
+const { loadPrefixes } = require("./guildSettings");
 const { log } = require("./utils/logger");
 
 class BotClient extends Client {
@@ -47,6 +48,7 @@ class BotClient extends Client {
     loadComponents(this);
 
     if (!(await connectDatabase())) process.exit(1);
+    await loadPrefixes();
 
     await this.login(config.token);
     // with sharding every shard runs this file, but the commands only need to be sent once

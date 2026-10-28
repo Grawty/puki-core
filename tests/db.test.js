@@ -7,9 +7,10 @@ const assert = require("node:assert");
 const skip = process.env.TEST_DB_NAME ? false : "set TEST_DB_NAME to run the database tests";
 
 const { sequelize, connectDatabase } = require("../src/database");
-const { User } = require("../src/models");
+const { User, Guild } = require("../src/models");
 const { claimDaily, DAILY_COINS } = require("../src/economy");
 const { runMigrations } = require("../src/migrations");
+const guildSettings = require("../src/guildSettings");
 
 test.before(async () => {
   if (skip) return;
@@ -19,6 +20,7 @@ test.before(async () => {
 test.after(async () => {
   if (skip) return;
   await User.destroy({ where: { id: ["db_a", "db_b", "db_rollback"] } });
+  await Guild.destroy({ where: { id: "db_guild" } });
   await sequelize.close();
 });
 
@@ -54,4 +56,16 @@ test("migrations are recorded and running them again changes nothing", { skip },
 
 test("two processes migrating at once do not collide", { skip }, async () => {
   await assert.doesNotReject(Promise.all([runMigrations(), runMigrations(), runMigrations()]));
+});
+
+test("a saved prefix is used, survives a reload and can be reset", { skip }, async () => {
+  await guildSettings.setPrefix("db_guild", "?");
+  assert.strictEqual(guildSettings.prefixFor("db_guild"), "?");
+
+  await guildSettings.loadPrefixes();
+  assert.strictEqual(guildSettings.prefixFor("db_guild"), "?");
+
+  await guildSettings.setPrefix("db_guild", null);
+  await guildSettings.loadPrefixes();
+  assert.notStrictEqual(guildSettings.prefixFor("db_guild"), "?");
 });
