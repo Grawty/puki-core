@@ -1,5 +1,5 @@
 {
-  "name": "pukijs",
+  "name": "puki-core",
   "version": "1.0.0",
   "description": "A small discord.js v14 bot framework: file-based command, event and component loaders, PostgreSQL through Sequelize, cooldowns and permission checks.",
   "main": "src/index.js",
@@ -20,7 +20,7 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/Grawty/pukijs.git"
+    "url": "git+https://github.com/Grawty/puki-core.git"
   },
   "engines": {
     "node": ">=20"

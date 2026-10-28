@@ -1,4 +1,4 @@
-# pukijs
+# puki-core
 
 A small discord.js v14 bot framework. Drop a file in a folder and you have a command, an event
 handler or a button; the loaders do the wiring. PostgreSQL through Sequelize is set up for you.
