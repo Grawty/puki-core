@@ -7,10 +7,11 @@ const assert = require("node:assert");
 const skip = process.env.TEST_DB_NAME ? false : "set TEST_DB_NAME to run the database tests";
 
 const { sequelize, connectDatabase } = require("../src/database");
-const { User, Guild } = require("../src/models");
+const { User, Guild, Reminder } = require("../src/models");
 const { claimDaily, DAILY_COINS } = require("../src/economy");
 const { runMigrations } = require("../src/migrations");
 const guildSettings = require("../src/guildSettings");
+const scheduler = require("../src/scheduler");
 
 test.before(async () => {
   if (skip) return;
@@ -21,6 +22,7 @@ test.after(async () => {
   if (skip) return;
   await User.destroy({ where: { id: ["db_a", "db_b", "db_rollback"] } });
   await Guild.destroy({ where: { id: "db_guild" } });
+  await Reminder.destroy({ where: { userId: "db_user" } });
   await sequelize.close();
 });
 
@@ -68,4 +70,16 @@ test("a saved prefix is used, survives a reload and can be reset", { skip }, asy
   await guildSettings.setPrefix("db_guild", null);
   await guildSettings.loadPrefixes();
   assert.notStrictEqual(guildSettings.prefixFor("db_guild"), "?");
+});
+
+test("a due reminder is claimed exactly once, a future one stays", { skip }, async () => {
+  const past = new Date(Date.now() - 1000);
+  const future = new Date(Date.now() + 3_600_000);
+  await Reminder.create({ userId: "db_user", channelId: "c1", text: "due", dueAt: past });
+  await Reminder.create({ userId: "db_user", channelId: "c1", text: "later", dueAt: future });
+
+  const claims = await Promise.all(Array.from({ length: 5 }, () => scheduler.claimDue()));
+  const mine = claims.flat().filter((row) => row.userId === "db_user");
+  assert.deepStrictEqual(mine.map((row) => row.text), ["due"]);
+  assert.strictEqual(await Reminder.count({ where: { userId: "db_user" } }), 1);
 });
