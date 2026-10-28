@@ -22,6 +22,10 @@ native polls and user-installable commands.
 - Moderation helper that checks the permissions of both sides, role hierarchy, the server owner and self.
 - A row-locked transaction (`/daily`) so parallel clicks cannot double-claim.
 - Numbered, idempotent migrations on top of `sequelize.sync()`.
+- Per-server settings: a custom prefix per server (`/prefix`), also usable by mentioning the bot.
+- A scheduler for things that happen later (`/remind`), safe across restarts and shards.
+- Daily JSON backups of every table, kept for 14 days, and `npm run backup`.
+- Dependabot for npm, GitHub Actions and Docker.
 - Graceful shutdown, errors that always answer the user, optional sharding.
 - Dockerfile and docker-compose with PostgreSQL, tests that run real commands and events against fake Discord objects, database tests for the transactions, lint, `npm audit` and GitHub Actions with PostgreSQL.
 
@@ -65,10 +69,14 @@ Every command here exists to show one thing. Delete `src/commands/slash/Examples
 | `/file` | sending an attachment |
 | `/thread` | starting a thread, checking the bot's permission first |
 | `/daily`, `/balance`, `/top` | PostgreSQL, a locked transaction, sorted queries |
+| `/prefix` | per-server settings in a `Guild` table, cached in memory, permission check inside the command |
+| `/remind` | the scheduler: due work claimed with `DELETE ... RETURNING ... SKIP LOCKED`, delivery over REST so any shard can do it |
 | `/kick`, `/timeout` | moderation with every safety check |
 | `/status` | an owner-only command; the bot status itself is `presence` in `src/client.js` |
 | Show avatar (user menu), Message info (message menu) | context menu commands |
 | `!ping`, `!say` | text commands with aliases and arguments |
+
+Backups are a safety net, not a replacement for `pg_dump`: for a large database, dump it on the server as well.
 
 Events: `ready`, `interactionCreate`, `messageCreate`, `guildCreate`, `threadCreate`.
 
@@ -85,9 +93,12 @@ src/
   events/                          one file per gateway event
   handlers/                        the loaders and the deploy step
   migrations/                      numbered schema changes
-  models/                          Sequelize models
+  models/                          Sequelize models (User, Guild, Reminder)
   utils/                           gate, cooldowns, replies, permissions
   economy.js                       balance and daily reward
+  guildSettings.js                 per-server prefix
+  scheduler.js                     reminders that are due
+  backup.js                        JSON backups of every table
   shard.js                         optional ShardingManager entry
 ```
 
@@ -124,6 +135,7 @@ Anything that reads a balance, checks it and writes it back belongs in a transac
 | Command | |
 | --- | --- |
 | `npm start` | run the bot |
+| `npm run backup` | write a backup now (the running bot also does one a day, see `BACKUP_*` in `.env.example`) |
 | `npm run start:sharded` | run it under a ShardingManager (needed around 2,500 servers) |
 | `npm test` | unit tests and command flows against fake Discord objects; no database needed |
 | `TEST_DB_NAME=puki_core_test npm test` | also runs the database tests (locked transactions, rollback, migrations); the database must exist and may be wiped |
