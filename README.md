@@ -129,6 +129,10 @@ Anything that reads a balance, checks it and writes it back belongs in a transac
 | `TEST_DB_NAME=puki_core_test npm test` | also runs the database tests (locked transactions, rollback, migrations); the database must exist and may be wiped |
 | `npm run lint` | eslint |
 
+## Contributing
+
+Issues and pull requests are welcome, see [CONTRIBUTING.md](CONTRIBUTING.md).
+
 ## License
 
 MIT, see [LICENSE](LICENSE).
