@@ -1,0 +1,38 @@
+{
+  "name": "pukijs",
+  "version": "1.0.0",
+  "description": "A small discord.js v14 bot framework: file-based command, event and component loaders, PostgreSQL through Sequelize, cooldowns and permission checks.",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node .",
+    "test": "node --test \"tests/*.test.js\"",
+    "lint": "eslint src tests"
+  },
+  "keywords": [
+    "discord",
+    "discord.js",
+    "discord-bot",
+    "bot-framework",
+    "sequelize",
+    "postgresql"
+  ],
+  "author": "Grawty",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Grawty/pukijs.git"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "discord.js": "^14.15.2",
+    "dotenv": "^16.6.1",
+    "pg": "^8.13.1",
+    "pg-hstore": "^2.3.4",
+    "sequelize": "^6.37.7"
+  },
+  "devDependencies": {
+    "eslint": "^9.39.5"
+  }
+}

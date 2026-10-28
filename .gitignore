@@ -1,0 +1,8 @@
+node_modules
+package-lock.json
+
+.env
+*.log
+
+# remembers which slash commands were last sent to Discord
+.deploy-cache.json
