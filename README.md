@@ -1,9 +1,12 @@
 # puki-core
 
-A small discord.js v14 bot framework. Drop a file in a folder and you have a command, an event
-handler or a button; the loaders do the wiring. PostgreSQL through Sequelize is set up for you.
+A discord.js v14 bot template (boilerplate) with file based command, event and component loaders.
+Drop a file in a folder and you have a command, an event handler or a button; the loaders do the
+wiring. PostgreSQL through Sequelize is set up for you.
 
-It is the plumbing of a bot I run privately, cleaned up and cut down to a handful of example commands.
+This is the plumbing of [Puki](https://top.gg/bot/783252170120233001), a Discord bot I run, cleaned up
+and cut down to a handful of example commands. Puki itself (its card game, economy content and
+artwork) is not part of this repository.
 
 ## What you get
 
