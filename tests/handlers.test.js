@@ -38,10 +38,19 @@ test("text command aliases point at real commands", () => {
   for (const target of client.aliases.values()) assert.ok(client.prefixCommands.has(target));
 });
 
-test("the ping button is registered by its customId", () => {
+test("every kind of component is registered", () => {
   const client = fakeClient();
   loadComponents(client);
   assert.ok(client.components.buttons.has("ping"));
+  assert.ok(client.components.selects.has("demo"));
+  assert.ok(client.components.modals.has("feedback") && client.components.modals.has("report"));
+  assert.ok(client.components.autocomplete.has("options"));
+});
+
+test("every slash command that opens a component has a handler for it", () => {
+  const client = fakeClient();
+  loadCommands(client);
+  for (const id of ["selects", "feedback", "report", "options"]) assert.ok(client.interactions.has(id), id);
 });
 
 test("the daily reward can be claimed once per 24 hours", () => {
