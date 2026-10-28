@@ -45,7 +45,8 @@ class BotClient extends Client {
     if (!(await connectDatabase())) process.exit(1);
 
     await this.login(config.token);
-    await deploy(this);
+    // with sharding every shard runs this file, but the commands only need to be sent once
+    if (!this.shard || this.shard.ids.includes(0)) await deploy(this);
   }
 }
 

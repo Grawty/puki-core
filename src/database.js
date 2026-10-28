@@ -20,8 +20,9 @@ async function connectDatabase() {
   try {
     await sequelize.authenticate();
     require("./models");
-    // sync() only creates missing tables. Changes to an existing table need a migration of your own.
+    // sync() only creates missing tables; changes to existing ones are migrations (src/migrations)
     await sequelize.sync();
+    await require("./migrations").runMigrations();
     log("Database connected.", "done");
     return true;
   } catch (error) {
