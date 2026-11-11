@@ -1,4 +1,4 @@
-const { ActivityType, Client, Collection, GatewayIntentBits, Options } = require("discord.js");
+const { ActivityType, Client, Collection, GatewayIntentBits, Options, Partials } = require("discord.js");
 const loadCommands = require("./handlers/commands");
 const loadEvents = require("./handlers/events");
 const loadComponents = require("./handlers/components");
@@ -9,7 +9,7 @@ const { loadPrefixes } = require("./guildSettings");
 const { log } = require("./utils/logger");
 
 class BotClient extends Client {
-  // slash commands and context menus, by name
+  // slash commands by name, context menus as "user:<name>" and "message:<name>"
   interactions = new Collection();
   prefixCommands = new Collection();
   aliases = new Collection();
@@ -27,8 +27,11 @@ class BotClient extends Client {
       intents: [
         GatewayIntentBits.Guilds,
         GatewayIntentBits.GuildMessages,
+        GatewayIntentBits.DirectMessages, // text commands in DMs
         GatewayIntentBits.MessageContent, // privileged: only needed for text commands
       ],
+      // a DM channel is not cached until it is used, so without this the first DM never arrives
+      partials: [Partials.Channel],
       presence: {
         status: "online",
         activities: [{ name: config.statusText, type: ActivityType.Watching }],

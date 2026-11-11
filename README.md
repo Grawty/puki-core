@@ -16,9 +16,11 @@ native polls and user-installable commands.
 - File based loaders for slash commands, user and message context menus, text (prefix) commands,
   events and components (buttons, selects, modals, autocomplete).
 - Slash command deploy that skips Discord when nothing changed since the last start
-  (no wasted command-create quota), with a dev-guild mode for instant updates.
+  (no wasted command-create quota), with a dev-guild mode for instant updates that cleans up
+  after itself when you go global.
 - One gate for every command: owner-only, guild-only and per-user cooldowns, the same for slash
-  and text commands.
+  and text commands. A command that fails gives the cooldown back, and a text command on
+  cooldown says so once instead of answering every attempt.
 - Moderation helper that checks the permissions of both sides, role hierarchy, the server owner and self.
 - A row-locked transaction (`/daily`) so parallel clicks cannot double-claim.
 - Numbered, idempotent migrations on top of `sequelize.sync()`.
@@ -26,12 +28,22 @@ native polls and user-installable commands.
 - A scheduler for things that happen later (`/remind`), safe across restarts and shards.
 - Daily JSON backups of every table, kept for 14 days, and `npm run backup`.
 - Dependabot for npm, GitHub Actions and Docker.
-- Graceful shutdown, errors that always answer the user, optional sharding.
+- Graceful shutdown, errors that always answer the user, a non-zero exit code when the bot cannot
+  start (so pm2, systemd and Docker notice), optional sharding.
 - Dockerfile and docker-compose with PostgreSQL, tests that run real commands and events against fake Discord objects, database tests for the transactions, lint, `npm audit` and GitHub Actions with PostgreSQL.
 
 ## Setup
 
 You need Node 20+ and a PostgreSQL database.
+
+1. Create an application at the [developer portal](https://discord.com/developers/applications).
+   Copy the **Application ID** (`CLIENT_ID`) and, on the **Bot** page, the token (`CLIENT_TOKEN`).
+2. On the **Bot** page, enable the **Message Content** intent if you want text commands. If you
+   don't, remove `GatewayIntentBits.MessageContent` from `src/client.js` and delete
+   `src/commands/prefix`; the bot will not start with an intent the portal has not enabled.
+3. Invite the bot with the `bot` and `applications.commands` scopes:
+   `https://discord.com/oauth2/authorize?client_id=<CLIENT_ID>&scope=bot+applications.commands`
+4. Install and start:
 
 ```bash
 npm install
@@ -39,15 +51,27 @@ cp .env.example .env   # fill in token, client id and database
 npm start
 ```
 
-Or with Docker (starts the bot and PostgreSQL):
+Or with Docker (starts the bot and PostgreSQL; set `DB_PASSWORD` in `.env` first):
 
 ```bash
 docker compose up -d --build
 ```
 
-Enable the **Message Content** intent in the developer portal if you want text commands, or remove
-`GatewayIntentBits.MessageContent` from `src/client.js` and delete `src/commands/prefix`.
-Set `GUILD_ID` while developing so commands show up instantly.
+Set `GUILD_ID` to your test server while developing so commands show up instantly.
+
+### Configuration
+
+Everything is read from `.env` in `src/config.js`.
+
+| Variable | Default | |
+| --- | --- | --- |
+| `CLIENT_TOKEN`, `CLIENT_ID` | | required |
+| `GUILD_ID` | empty | register commands on this server only (instant); empty registers them globally |
+| `PREFIX` | `!` | default text command prefix; servers can set their own with `/prefix` |
+| `STATUS_TEXT` | `/help` | shown as "Watching ..." under the bot's name |
+| `OWNER_ID` | empty | comma separated user ids for `ownerOnly` commands |
+| `BACKUP_EVERY_HOURS`, `BACKUP_KEEP`, `BACKUP_DIR` | `24`, `14`, `backups/` | daily JSON backups; `0` hours turns them off |
+| `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASSWORD` | `localhost`, `5432`, `puki_core`, `postgres`, empty | PostgreSQL |
 
 ## Examples
 
@@ -76,9 +100,7 @@ Every command here exists to show one thing. Delete `src/commands/slash/Examples
 | Show avatar (user menu), Message info (message menu) | context menu commands |
 | `!ping`, `!say` | text commands with aliases and arguments |
 
-Backups are a safety net, not a replacement for `pg_dump`: for a large database, dump it on the server as well.
-
-Events: `ready`, `interactionCreate`, `messageCreate`, `guildCreate`, `threadCreate`.
+Events: `clientReady`, `interactionCreate`, `messageCreate`, `guildCreate`, `threadCreate`.
 
 ## Layout
 
@@ -110,9 +132,28 @@ tests/                             unit tests, command flows, database tests
 Dockerfile, docker-compose.yml     the bot and PostgreSQL in containers
 ```
 
+## How a command runs
+
+Slash commands, context menus, text commands and components all take the same path:
+
+1. **Lookup.** Slash commands are found by name, context menus by type and name (`user:Show avatar`,
+   `message:Message info`, so a menu may share a name with a slash command), components by
+   `customId` or the part before the first `:`.
+2. **Gate** (`src/utils/gate.js`): `ownerOnly`, then `guildOnly`, then the per-user `cooldown`.
+   The refusal is answered ephemerally for interactions. For text commands a cooldown is
+   explained once; further attempts during the same cooldown get no answer, so the warning
+   cannot become spam itself.
+3. **Run.** If `run` throws, the error is logged, the user is told something went wrong
+   (as a follow-up when the command had already replied) and the cooldown is given back.
+   The cooldown only slows people down: anything that must never happen twice belongs in the
+   database, like the locked transaction in `/daily`.
+
+Text commands are ignored where the bot cannot write, instead of failing on every message.
+They work in DMs too, with the default prefix.
+
 ## Adding things
 
-A slash command:
+A slash command, in `src/commands/slash/<Category>/hello.js`:
 
 ```js
 const { SlashCommandBuilder } = require("discord.js");
@@ -126,9 +167,26 @@ module.exports = {
 };
 ```
 
-A component: export `{ customId, run, options? }` from the matching folder under `src/components/`. `options` takes the same `ownerOnly`, `guildOnly` and `cooldown` as a command. An id like
+A context menu goes in `src/commands/user/` or `src/commands/message/` with a
+`ContextMenuCommandBuilder` as `structure`, see `src/commands/user/Context/avatar.js`.
+
+A text command, in `src/commands/prefix/<Category>/hi.js`; `args` are the words after the name:
+
+```js
+module.exports = {
+  structure: { name: "hi", aliases: ["hey"] },
+  options: { cooldown: 3 },
+  run: async (client, message, args) => {
+    await message.reply(`Hi ${args.join(" ") || message.author.displayName}!`);
+  },
+};
+```
+
+A component: export `{ customId, run, options? }` from the matching folder under `src/components/`.
+`options` takes the same `ownerOnly`, `guildOnly` and `cooldown` as a command. An id like
 `demo:user` is handled by the component called `demo`, so you can carry data after the colon.
-Autocomplete exports `{ commandName, run }` instead.
+A button that only matters inside one command can be awaited there instead (see `/confirm`);
+give it an id no component file uses. Autocomplete exports `{ commandName, run }` instead.
 
 An event: export `{ event, once?, run(client, ...args) }` from `src/events/`.
 
@@ -138,6 +196,45 @@ A schema change on an existing table: add `src/migrations/002-what-it-does.js` e
 Anything that reads a balance, checks it and writes it back belongs in a transaction with
 `lock: transaction.LOCK.UPDATE`, see `claimDaily` in `src/economy.js`.
 
+A file that fails to load (a syntax error, a missing `structure.name` or `run`, a name that is
+already taken) is skipped with a line in the log; the rest of the bot still starts.
+
+## Registering slash commands
+
+On start the bot sends its commands to Discord, but only when they changed: a hash of the list is
+kept in `data/deploy-cache.json` (a volume in docker-compose, so rebuilds keep it). Delete that
+file to force a new registration.
+
+- With `GUILD_ID` set, commands go to that server only and update instantly.
+- When you clear `GUILD_ID` to go global, the commands left on that server are removed, otherwise
+  it would show every command twice.
+- Going the other way, from global to a test server, keeps the global commands (they may be live
+  for your users) and logs a warning that the test server shows both. A separate application for
+  development avoids that entirely.
+
+## Running in production
+
+- If the bot cannot start (wrong token, an intent not enabled, no database), it exits with code 1.
+  Docker (`restart: unless-stopped`), pm2 and systemd's `Restart=on-failure` restart it; check
+  the log when it keeps restarting.
+- `SIGINT` and `SIGTERM` close the gateway and the database before exiting.
+- Backups land in `backups/` (a volume in docker-compose). They are a safety net, not a
+  replacement for `pg_dump`: for a large database, dump it on the server as well.
+- Around 2,500 servers Discord requires sharding: `npm run start:sharded`. Each shard is its own
+  process, so cooldowns and caches are per shard; the prefix cache stays correct because a server
+  belongs to one shard, and reminders are claimed in the database so any shard can send them.
+
+## Troubleshooting
+
+| You see | Why |
+| --- | --- |
+| `Used disallowed intents` | Message Content is not enabled on the Bot page; enable it or remove it from `src/client.js` |
+| `An invalid token was provided` | `CLIENT_TOKEN` is wrong or was reset in the portal |
+| Slash commands don't appear | global commands can take a while for clients to pick up; set `GUILD_ID` while developing, and check that the invite had `applications.commands` |
+| Every command shows twice | the same commands are registered both globally and on that server, see *Registering slash commands* |
+| Text commands do nothing | Message Content intent, the server's prefix (mention the bot to see it), or the bot cannot write in that channel |
+| `Could not save .../deploy-cache.json` | `data/` is not writable; commands still went out, but are sent again on every start |
+
 ## Scripts
 
 | Command | |
@@ -145,7 +242,7 @@ Anything that reads a balance, checks it and writes it back belongs in a transac
 | `npm start` | run the bot |
 | `npm run backup` | write a backup now (the running bot also does one a day, see `BACKUP_*` in `.env.example`) |
 | `npm run start:sharded` | run it under a ShardingManager (needed around 2,500 servers) |
-| `npm test` | unit tests and command flows against fake Discord objects; no database needed |
+| `npm test` | unit tests and command flows against fake Discord objects; no database or token needed |
 | `TEST_DB_NAME=puki_core_test npm test` | also runs the database tests (locked transactions, rollback, migrations); the database must exist and may be wiped |
 | `npm run lint` | eslint |
 

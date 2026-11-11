@@ -31,3 +31,15 @@ test("clear gives the wait back, sweep drops finished entries", () => {
   cooldowns.sweep(now + 60_000);
   assert.ok(cooldowns.size() < before);
 });
+
+test("firstWarning is true once per running cooldown", () => {
+  const now = 4_000_000;
+  assert.strictEqual(cooldowns.firstWarning("e", "ping"), false, "no cooldown, nothing to warn about");
+  cooldowns.hit("e", "ping", 5000, now);
+  assert.strictEqual(cooldowns.firstWarning("e", "ping"), true);
+  assert.strictEqual(cooldowns.firstWarning("e", "ping"), false);
+
+  // a new cooldown warns again
+  cooldowns.hit("e", "ping", 5000, now + 5000);
+  assert.strictEqual(cooldowns.firstWarning("e", "ping"), true);
+});

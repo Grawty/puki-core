@@ -9,7 +9,7 @@ Thanks for wanting to help. Bug reports, fixes, new examples and docs are all we
 
 ## Setup
 
-You need Node 20+ and PostgreSQL.
+You need Node 20.19+ (eslint needs it) and PostgreSQL.
 
 ```bash
 npm ci

@@ -226,6 +226,106 @@ test("a text command that throws answers instead of crashing", async () => {
   assert.match(message.calls[0], /went wrong/);
 });
 
+test("a text command on cooldown says so once, then stays quiet", async () => {
+  const client = makeClient();
+  const author = { id: nextUser(), bot: false };
+  await messageCreate.run(client, fakeMessage("!ping", { author }));
+
+  const warned = fakeMessage("!ping", { author });
+  await messageCreate.run(client, warned);
+  assert.match(warned.calls[0], /Slow down/);
+
+  for (let i = 0; i < 3; i++) {
+    const spam = fakeMessage("!ping", { author });
+    await messageCreate.run(client, spam);
+    assert.deepStrictEqual(spam.calls, [], "no reply to every repeated attempt");
+  }
+});
+
+test("a command that throws gives its cooldown back", async () => {
+  const client = makeClient();
+  let fail = true;
+  const run = async (c, target) => {
+    if (fail) throw new Error("broken on purpose");
+    await (target.reply ? target.reply("worked") : null);
+  };
+  client.interactions.set("flaky", { options: { cooldown: 60 }, run });
+  client.prefixCommands.set("flaky", { options: { cooldown: 60 }, run });
+
+  const user = { id: nextUser(), tag: "x#1" };
+  await say(client, fakeInteraction({ commandName: "flaky", user }));
+  fail = false;
+  const retry = fakeInteraction({ commandName: "flaky", user });
+  await say(client, retry);
+  assert.strictEqual(retry.calls[0].text, "worked", "no cooldown after a failure");
+
+  const author = { id: nextUser(), bot: false };
+  fail = true;
+  await messageCreate.run(client, fakeMessage("!flaky", { author }));
+  fail = false;
+  const again = fakeMessage("!flaky", { author });
+  await messageCreate.run(client, again);
+  assert.deepStrictEqual(again.calls, ["worked"]);
+});
+
+test("a component that throws gives its cooldown back", async () => {
+  const client = makeClient();
+  let fail = true;
+  client.components.buttons.set("flaky", {
+    customId: "flaky",
+    options: { cooldown: 60 },
+    run: async (c, i) => { if (fail) throw new Error("broken"); await i.update({ content: "worked" }); },
+  });
+  const user = { id: nextUser(), tag: "x#1" };
+  const button = () => fakeInteraction({ isCommand: () => false, isButton: () => true, customId: "flaky", user });
+
+  await say(client, button());
+  fail = false;
+  const retry = button();
+  await say(client, retry);
+  assert.strictEqual(retry.calls[0].text, "worked");
+});
+
+test("a slash command and a context menu may share a name", async () => {
+  const client = makeClient();
+  const ran = [];
+  client.interactions.set("same", { options: {}, run: async () => { ran.push("slash"); } });
+  client.interactions.set("user:same", { options: {}, run: async () => { ran.push("user menu"); } });
+  client.interactions.set("message:same", { options: {}, run: async () => { ran.push("message menu"); } });
+
+  await say(client, fakeInteraction({ commandName: "same" }));
+  await say(client, fakeInteraction({ commandName: "same", commandType: 2 }));
+  await say(client, fakeInteraction({ commandName: "same", commandType: 3 }));
+  assert.deepStrictEqual(ran, ["slash", "user menu", "message menu"]);
+});
+
+test("the shipped context menus are found by their type", async () => {
+  const client = makeClient();
+  assert.ok(client.interactions.has("avatar"));
+  assert.ok(client.interactions.has("user:Show avatar"));
+  assert.ok(client.interactions.has("message:Message info"));
+});
+
+test("text commands stay silent where the bot may not write", async () => {
+  const client = makeClient();
+  const readOnly = (sendAllowed) => ({
+    guild: { id: "g-readonly", members: { me: { id: "bot" } } },
+    channel: { isThread: () => false, permissionsFor: () => ({ has: () => sendAllowed }) },
+  });
+
+  const blocked = fakeMessage("!say hi", readOnly(false));
+  await messageCreate.run(client, blocked);
+  assert.deepStrictEqual(blocked.calls, []);
+
+  const mention = fakeMessage("<@42>", { ...readOnly(false), author: { id: nextUser(), bot: false } });
+  await messageCreate.run({ ...client, user: { id: "42" } }, mention);
+  assert.deepStrictEqual(mention.calls, []);
+
+  const allowed = fakeMessage("!say hi", readOnly(true));
+  await messageCreate.run(client, allowed);
+  assert.deepStrictEqual(allowed.calls, ["hi"]);
+});
+
 const member = (id, position, extra = {}) => ({
   id,
   user: { tag: `${id}#0001` },

@@ -75,3 +75,35 @@ test("when Discord refuses, nothing is remembered and the next start tries again
   await deploy(client, file);
   assert.strictEqual(calls.length, 1);
 });
+
+test("moving from a dev server to global removes the commands left on that server", async (t) => {
+  const logs = captureLogs(t);
+  const calls = fakeDiscord(t);
+  const file = path.join(tempDir(), "deploy-cache.json");
+
+  config.devGuildId = "dev-guild";
+  await deploy(client, file);
+  config.devGuildId = null;
+  await deploy(client, file);
+
+  assert.deepStrictEqual(calls.map((call) => call.route), [
+    "/applications/123/guilds/dev-guild/commands",
+    "/applications/123/commands",
+    "/applications/123/guilds/dev-guild/commands",
+  ]);
+  assert.deepStrictEqual(calls[2].options.body, [], "the old server is emptied");
+  assert.ok(logs.some((line) => line.includes("Removed the commands left")));
+});
+
+test("moving from global to a dev server keeps the global commands and warns", async (t) => {
+  const logs = captureLogs(t);
+  const calls = fakeDiscord(t);
+  const file = path.join(tempDir(), "deploy-cache.json");
+
+  await deploy(client, file);
+  config.devGuildId = "dev-guild";
+  await deploy(client, file);
+
+  assert.strictEqual(calls.length, 2, "global commands are never wiped automatically");
+  assert.ok(logs.some((line) => line.includes("[warn]") && line.includes("show twice")));
+});

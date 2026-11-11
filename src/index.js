@@ -3,7 +3,16 @@ const { sequelize } = require("./database");
 const { log } = require("./utils/logger");
 
 const client = new BotClient();
-client.start();
+
+// A bot that cannot log in (wrong token, an intent not enabled in the portal) must exit with an
+// error code, or pm2 and systemd's Restart=on-failure would take it for a clean stop
+client.start().catch((error) => {
+  log(error, "err");
+  if (/disallowed intents/i.test(error.message)) {
+    log("Enable the Message Content intent in the developer portal (Bot page), or remove it from src/client.js.", "err");
+  }
+  process.exit(1);
+});
 
 process.on("unhandledRejection", (reason) => log(reason, "err"));
 
