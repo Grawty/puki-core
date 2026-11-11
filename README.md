@@ -1,5 +1,12 @@
 # puki-core
 
+[![CI](https://github.com/Grawty/puki-core/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/Grawty/puki-core/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/github/license/Grawty/puki-core)](LICENSE)
+[![Node](https://img.shields.io/badge/node-%3E%3D20-339933?logo=nodedotjs&logoColor=white)](package.json)
+[![discord.js](https://img.shields.io/github/package-json/dependency-version/Grawty/puki-core/discord.js?logo=discord&logoColor=white&color=5865F2)](https://discord.js.org)
+[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16%20%7C%2018-4169E1?logo=postgresql&logoColor=white)](#upgrading-postgresql)
+[![Use this template](https://img.shields.io/badge/use%20this-template-2ea44f?logo=github)](https://github.com/Grawty/puki-core/generate)
+
 A discord.js v14 bot template (boilerplate) with file based command, event and component loaders.
 Drop a file in a folder and you have a command, an event handler or a button; the loaders do the
 wiring. PostgreSQL through Sequelize is set up for you.
