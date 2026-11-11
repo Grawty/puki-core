@@ -1,6 +1,6 @@
 const path = require("path");
 
-require("dotenv").config();
+require("dotenv").config({ quiet: true });
 
 const list = (value) => (value || "").split(",").map((item) => item.trim()).filter(Boolean);
 
