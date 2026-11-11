@@ -30,7 +30,7 @@ native polls and user-installable commands.
 - Dependabot for npm, GitHub Actions and Docker.
 - Graceful shutdown, errors that always answer the user, a non-zero exit code when the bot cannot
   start (so pm2, systemd and Docker notice), optional sharding.
-- Dockerfile and docker-compose with PostgreSQL, tests that run real commands and events against fake Discord objects, database tests for the transactions, lint, `npm audit` and GitHub Actions with PostgreSQL.
+- Dockerfile with a health check and docker-compose with PostgreSQL, tests that run real commands and events against fake Discord objects, database tests for the transactions, lint, `npm audit` and GitHub Actions with PostgreSQL.
 
 ## Setup
 
@@ -126,7 +126,8 @@ src/
   scheduler.js                     reminders that are due
   backup.js                        JSON backups of every table
   shard.js                         optional ShardingManager entry
-data/                              runtime state (which commands were last sent), not committed
+  health.js                        heartbeat file and the Docker health check
+data/                              runtime state (sent commands, heartbeat), not committed
 scripts/                           test runner, manual backup
 tests/                             unit tests, command flows, database tests
 Dockerfile, docker-compose.yml     the bot and PostgreSQL in containers
@@ -218,11 +219,42 @@ file to force a new registration.
   Docker (`restart: unless-stopped`), pm2 and systemd's `Restart=on-failure` restart it; check
   the log when it keeps restarting.
 - `SIGINT` and `SIGTERM` close the gateway and the database before exiting.
+- The Docker image has a health check: while connected to Discord the bot writes
+  `data/heartbeat` every 30 seconds, and `node src/health.js` calls it unhealthy once that is
+  older than 90 seconds (frozen, or the gateway keeps failing to reconnect). `docker ps` shows the
+  state. Docker itself does not restart an unhealthy container; Swarm, Kubernetes or an
+  autoheal container do. Outside Docker you can run the same check from your own monitoring.
 - Backups land in `backups/` (a volume in docker-compose). They are a safety net, not a
   replacement for `pg_dump`: for a large database, dump it on the server as well.
 - Around 2,500 servers Discord requires sharding: `npm run start:sharded`. Each shard is its own
   process, so cooldowns and caches are per shard; the prefix cache stays correct because a server
   belongs to one shard, and reminders are claimed in the database so any shard can send them.
+
+## Upgrading PostgreSQL
+
+docker-compose stays on PostgreSQL 16 on purpose; CI tests 18. A new major version cannot open the
+data of an older one, so changing the image tag alone leaves the database unable to start. To move
+an existing install to 18:
+
+```bash
+docker compose exec db pg_dumpall -U postgres > dump.sql   # 1. dump everything while 16 runs
+docker compose down
+docker volume rm puki-core_pgdata                          # 2. after checking dump.sql is complete
+```
+
+3. In `docker-compose.yml` set `image: postgres:18-alpine` and mount the volume at
+   `/var/lib/postgresql` instead of `/var/lib/postgresql/data` (the 18 image keeps its data one
+   level deeper).
+4. Start only the database, load the dump, then start the rest:
+
+```bash
+docker compose up -d db
+docker compose exec -T db psql -U postgres < dump.sql
+docker compose up -d --build
+```
+
+Use your `DB_USER` instead of `postgres` if you changed it. The volume name starts with the folder
+name of the project; `docker volume ls` shows it.
 
 ## Troubleshooting
 
@@ -233,6 +265,7 @@ file to force a new registration.
 | Slash commands don't appear | global commands can take a while for clients to pick up; set `GUILD_ID` while developing, and check that the invite had `applications.commands` |
 | Every command shows twice | the same commands are registered both globally and on that server, see *Registering slash commands* |
 | Text commands do nothing | Message Content intent, the server's prefix (mention the bot to see it), or the bot cannot write in that channel |
+| Container is `unhealthy` | the bot is not connected to Discord; see its log (`docker compose logs bot`) |
 | `Could not save .../deploy-cache.json` | `data/` is not writable; commands still went out, but are sent again on every start |
 
 ## Scripts
@@ -248,7 +281,8 @@ file to force a new registration.
 
 ## Contributing
 
-Issues and pull requests are welcome, see [CONTRIBUTING.md](CONTRIBUTING.md).
+Issues and pull requests are welcome, see [CONTRIBUTING.md](CONTRIBUTING.md). Security problems
+and leaked tokens: see [SECURITY.md](SECURITY.md).
 
 ## License
 

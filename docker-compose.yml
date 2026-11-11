@@ -17,6 +17,8 @@ services:
         condition: service_healthy
 
   db:
+    # Stays on 16 on purpose: a new major version cannot open this data volume.
+    # To move up, follow "Upgrading PostgreSQL" in the README.
     image: postgres:16-alpine
     restart: unless-stopped
     environment:
