@@ -10,6 +10,8 @@ services:
       DB_PORT: 5432
     volumes:
       - backups:/app/backups
+      # remembers which slash commands were last sent, so a rebuild does not send them again
+      - data:/app/data
     depends_on:
       db:
         condition: service_healthy
@@ -32,3 +34,4 @@ services:
 volumes:
   pgdata:
   backups:
+  data:

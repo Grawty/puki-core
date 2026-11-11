@@ -5,5 +5,5 @@ node_modules
 
 backups/
 
-# remembers which slash commands were last sent to Discord
-.deploy-cache.json
+# runtime state, such as which slash commands were last sent to Discord
+data/

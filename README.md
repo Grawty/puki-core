@@ -104,6 +104,7 @@ src/
   scheduler.js                     reminders that are due
   backup.js                        JSON backups of every table
   shard.js                         optional ShardingManager entry
+data/                              runtime state (which commands were last sent), not committed
 scripts/                           test runner, manual backup
 tests/                             unit tests, command flows, database tests
 Dockerfile, docker-compose.yml     the bot and PostgreSQL in containers
